@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Client</title>
+  </head>
+  <body style="margin:0; padding: 0;">
+    <h1 style="text-align:center; font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif; background-color: black; color: white;
+    padding: 0; margin: 0;
+    ">WhiteBoard(User)</h1>
+    <canvas id="canvas" style="border: 2px solid black">
+      Your Browser Does not support Canvas</canvas>
+     
+
+    <script>
+      var canvas = document.getElementById("canvas");
+      var ctx = canvas.getContext("2d");
+      let ws = new WebSocket("ws://localhost:5000");
+
+      var size, text_color;
+
+      ws.onmessage = function (message) {
+        var info = JSON.parse(message.data);
+        console.log(info);
+        if (info.paint == 0) endDraw();
+        if (info.paint == 1) startDraw();
+        if (info.paint == 2) {
+          
+          ctx.lineWidth = info.width;
+          ctx.strokeStyle = info.style;
+         
+            draw(info.x, info.y);
+         
+        }
+        if(info.paint == 3)
+        {
+          ctx.font=info.font;
+          ctx.fillStyle = info.style;
+          ctx.fillText(info.sstr,info.x,info.y);
+        }
+          
+        
+        if(info.paint == 4) clr();
+      };
+
+      canvas.height = window.innerHeight*0.87;
+      canvas.width = window.innerWidth;
+
+      window.addEventListener("resize", () => {
+        var tempImageVar = ctx.getImageData(0,0, canvas.width, canvas.height);
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        ctx.putImageData(tempImageVar, 0,0);
+      });
+
+      let paint = false;
+
+      function startDraw() {
+        paint = true;
+      }
+      function endDraw() {
+        paint = false;
+        ctx.beginPath();
+      }
+      function draw(x, y) {
+        if (!paint) return;
+
+          ctx.lineCap = "round";
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+      
+      }
+      
+
+      function changeWidth() {
+        ctx.lineWidth = document.getElementById("slider").value;
+        size = document.getElementById("slider").value;
+      }
+      function change(value) {
+        ctx.strokeStyle = value;
+        text_color=value;
+      }
+      function clr() {
+        ctx.fillRect = "white";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    </script>
+  </body>
+</html>

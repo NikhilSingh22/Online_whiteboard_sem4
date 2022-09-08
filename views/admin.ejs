@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administrator</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"
+    />
+  </head>
+  <body style="margin: 0; padding: 0">
+    <h1 style="text-align:center; font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;margin: 0; padding: 0; background-color: black; color: white;
+    ">WhiteBoard(Admin) </h1>
+    <!-- initializing the canvas -->
+        <canvas id="canvas" style="border: 2px solid black">Your Browser Does not support Canvas</canvas>
+
+
+    <!-- // color solid code  -->
+    <div
+      style="
+        height: 50px;
+        width: 50px;
+        display: inline-block;
+        margin: 5px;
+        border-radius: 15px;
+        background-color: red;
+      "
+      onclick="change('red')"
+    ></div>
+    <div
+      style="
+        height: 50px;
+        width: 50px;
+        display: inline-block;
+        margin: 5px;
+        border-radius: 15px;
+        background-color: blue;
+      "
+      onclick="change('blue')"
+    ></div>
+    <div
+      style="
+        height: 50px;
+        width: 50px;
+        display: inline-block;
+        margin: 5px;
+        border-radius: 15px;
+        background-color: green;
+      "
+      onclick="change('green')"
+    ></div>
+    <div
+      style="
+        height: 50px;
+        width: 50px;
+        display: inline-block;
+        margin: 5px;
+        border-radius: 15px;
+        background-color: black;
+      "
+      onclick="change('black')"
+    ></div>
+
+    <!-- color picker code  -->
+    <div style="height:10px; width: 50px; display: inline-block; margin: 0px; text-align:start;" >
+      <div class="color-picker"></div>
+    </div>
+
+    <!-- eraser code -->
+    <div
+      style="
+        height: 50px;
+        width: 50px;
+        display: inline-block;
+        margin: 5px;
+        background-size: 50px 50px;
+        background-image: url('https://static.thenounproject.com/png/3715-200.png');
+      "
+      onclick="change('white'); reset();"
+    ></div>
+
+    <!-- clear button  -->
+    <input
+    type="button"
+    value="Clear"
+      style="
+        
+        height: 50px;
+        width: 50px;
+        display: inline-block;
+        margin: 0px;
+        border: none;
+        background-color: black;
+        color: white;
+        border-radius: 15px;
+        font-weight: 700;
+        background-size: 50px 50px;
+        border: 1px solid black;
+      "
+      onclick="clr()"
+    >
+   
+  
+    <!-- width slider code -->
+    <input
+      type="range"
+      max="30"
+      min="1"
+      oninput="changeWidth()"
+      id="slider"
+      value="3"
+      style="height:40px;"
+    />
+    <!-- download button -->
+    <button id="download"
+    style="
+    height: 50px;
+    width: 50px;
+    display: inline;
+    margin: 0px;
+        border: none;
+        background-color: green;
+        color: white;
+        border-radius: 15px;
+        font-weight: 700;
+    background-size: 50px 50px;
+    border: 1px solid black;
+  "
+   onclick="download()">
+   SAVE
+    </button>
+
+    <!-- pencil tool -->
+  <div style=" display: inline-block;
+  margin: 5px;">
+    Pencil: 
+    <input type="radio" name="tool" id="pencil" value="pencil" checked ="checked" /> 
+  </div>
+  <!-- text tool -->
+  <div style=" display: inline-block;
+  margin: 5px;">
+    Text: 
+    <input type="radio" name="tool" id="text" value="text" /> 
+    <textarea id="text_string" name="text_area" rows="2" cols="10"></textarea>
+  </div>
+  
+    <!-- javascript library for color picker and downloading pdf -->
+    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+    <script src="https://raw.githack.com/eKoopmans/html2pdf/master/dist/html2pdf.bundle.js"></script>
+
+    <script>
+      var canvas = document.getElementById("canvas");
+      var ctx = canvas.getContext("2d");
+      canvas.height = window.innerHeight *0.75;
+      canvas.width = window.innerWidth;
+
+
+      let ws = new WebSocket("ws://localhost:5000");
+      var size,text_color;
+
+      // resizing the window 
+      window.addEventListener('resize', () => {
+    var tempImageVar = ctx.getImageData(0,0, canvas.width, canvas.height);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight*0.7;
+    ctx.putImageData(tempImageVar, 0,0);
+      });
+
+      let paint = false;
+      // function draw intiation
+      function startDraw() {
+        paint = true;
+        draw(event);
+        var info = {
+          width: ctx.lineWidth,
+          style: ctx.strokeStyle,
+          x: event.clientX,
+          y: event.clientY,
+          paint: 1,
+        };
+        ws.send(JSON.stringify(info));
+      }
+      //function draw ending
+      function endDraw() {
+        paint = false;
+        ctx.beginPath();
+        var info = {
+          width: ctx.lineWidth,
+          style: ctx.strokeStyle,
+          x: event.clientX,
+          y: event.clientY,
+          paint: 0,
+        };
+        ws.send(JSON.stringify(info));
+      }
+
+      // actuall draw function 
+      function draw(event){
+       
+        if (!paint) return;
+
+        // When pencil tool is selected
+        if(document.getElementById('pencil').checked) {
+          ctx.lineCap = "round";
+        ctx.lineTo(event.clientX, event.clientY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(event.clientX, event.clientY);
+        var info = {
+          tool:1,
+          width: ctx.lineWidth,
+          style: ctx.strokeStyle,
+          x: event.clientX,
+          y: event.clientY,
+          paint: 2,
+        };
+        ws.send(JSON.stringify(info));
+        }
+
+        // when text tool is selected
+        if(document.getElementById('text').checked)
+        {
+           const str = document.getElementById("text_string").value;
+           ctx.font=`${size}px Comic`;
+           ctx.fillStyle = `${text_color}`;
+           ctx.fillText(str,event.clientX,event.clientY);
+           var info = {
+            tool:2,
+            sstr:str,
+            font:ctx.font,
+            style:ctx.fillStyle,
+            width: ctx.lineWidth,
+            style: ctx.strokeStyle,
+            x: event.clientX,
+            y: event.clientY,
+            paint: 3,
+          };
+          document.getElementById("text_string").value = " ";
+          ws.send(JSON.stringify(info));
+        }
+
+      }
+    
+     
+      // changing the width of brush, eraser and text size through slider
+      function changeWidth() {
+        ctx.lineWidth = document.getElementById("slider").value;
+        size = document.getElementById("slider").value;
+      }
+
+      // changing the color 
+      function change(value) {
+        ctx.strokeStyle = value;
+        text_color=value;
+      }
+
+      // When eraser is selected get pencil as default tool
+      function reset()
+      {
+        document.getElementById('pencil').checked = true;
+      }
+
+      // RGBA COLOR ADD
+      const pickr = Pickr.create({
+        el: ".color-picker",
+        theme: "nano",
+
+        components: {
+          // Main components
+          preview: true,
+          opacity: true,
+          hue: true,
+
+          // Input / output Options
+          interaction: {
+            hex: true,
+            rgba: true,
+            input: true,
+          },
+        },
+      });
+
+      pickr.on("change", (color, source, instance) => {
+        const rgbaColor = color.toRGBA().toString();
+        ctx.strokeStyle = rgbaColor;
+        text_color = rgbaColor;
+      });
+
+      // clear button for clearing the canvas
+      function clr() {
+    
+        ctx.fillRect = "white";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var info = {
+          width: ctx.lineWidth,
+          style: ctx.strokeStyle,
+          x: event.clientX,
+          y: event.clientY,
+          paint: 4,
+        };
+        ws.send(JSON.stringify(info));
+      }
+      // all the event listners for drawing on the canvas
+      canvas.addEventListener("mousedown", startDraw);
+      canvas.addEventListener("mouseup", endDraw);
+      canvas.addEventListener("mousemove", draw);
+
+      // download format defining
+    var opt = {
+  margin:       0,
+  filename:     'myfile.pdf',
+  image:        { type: 'jpeg', quality: 0.98 },
+  html2canvas:  { scale: 1 },
+  jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+};
+
+
+    // Converting canvas into pdf
+      function download()
+      {
+        html2pdf().set(opt).from(canvas).save();
+      }
+
+    </script>
+
+  </body>
+</html>
